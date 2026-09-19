@@ -1,0 +1,131 @@
+{
+  "name": "Projeto_Investimento",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "cea96826-b4f8-40a7-9a29-ca8ebf87428a",
+      "name": "Ao clicar em 'Executar fluxo de trabalho'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        384,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clientes-investimento",
+        "options": {}
+      },
+      "id": "5439fb05-3c74-4459-be67-df4086101e9b",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        384,
+        32
+      ],
+      "webhookId": "clientes-investimento"
+    },
+    {
+      "parameters": {
+        "url": "https://digitalinnovationone.github.io/dio-lab-assistente-investimentos-rpa-n8n/data.csv",
+        "options": {}
+      },
+      "id": "50e1ffa3-34d9-4a5e-a4f7-d3bf4056a854",
+      "name": "Requisição HTTP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        656,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst chave = Object.keys(item)[0];\nconst texto = item[chave];\n\nconst linhas = texto.trim().split('\\n').map(l => l.trim());\nconst cabecalhos = linhas[0].split(',');\n\nreturn linhas.slice(1).map(linha => {\n  const valores = linha.split(',');\n  const novoItem = {};\n  cabecalhos.forEach((h, i) => novoItem[h] = valores[i]);\n  return { json: novoItem };\n});"
+      },
+      "id": "4dc57330-e356-4051-a66f-82b9cce7e7d9",
+      "name": "Código em JavaScript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Opções de investimento (vindas do nó anterior, já parseadas do CSV)\nconst opcoes = $input.all().map(i => i.json);\n\n// Clientes vindos do Webhook (payload enviado pelo notebook Python)\nconst dadosWebhook = $('Webhook').first().json;\nconst clientes = dadosWebhook.body || dadosWebhook;\n\nconst templates = {\n  'Conservador': 'Prezado(a) {nome}, para o seu perfil Conservador recomendamos foco em renda fixa e segurança.',\n  'Moderado': 'Prezado(a) {nome}, para o seu perfil Moderado recomendamos um mix equilibrado entre renda fixa e variável.',\n  'Arrojado': 'Prezado(a) {nome}, para o seu perfil Arrojado recomendamos ênfase em ações e maior potencial de retorno.'\n};\n\nreturn clientes.map(cliente => {\n  const perfil = cliente.perfil;\n  const opcoesDoPerfil = opcoes.filter(o => o.perfil === perfil);\n  const listaOpcoes = opcoesDoPerfil\n    .map(o => `- ${o.produto} (mínimo R$${o.minimo}, rentabilidade ${o.rentabilidade})`)\n    .join('\\n');\n\n  const template = templates[perfil] || 'Perfil não reconhecido.';\n  const mensagem = template.replace('{nome}', cliente.nome) +\n    '\\n\\nOpções recomendadas:\\n' + listaOpcoes;\n\n  return {\n    json: {\n      nome: cliente.nome,\n      email: cliente.email,\n      perfil: perfil,\n      mensagem: mensagem\n    }\n  };\n});"
+      },
+      "id": "187ea9c0-be5f-4b4d-bd37-91ee8cbb2649",
+      "name": "Cruzar Perfil e Gerar Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        144
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Ao clicar em 'Executar fluxo de trabalho'": {
+      "main": [
+        [
+          {
+            "node": "Requisição HTTP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Requisição HTTP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requisição HTTP": {
+      "main": [
+        [
+          {
+            "node": "Código em JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Código em JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Cruzar Perfil e Gerar Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "038c3b77-c9a5-40f5-b1c1-d65aba723623",
+  "meta": {
+    "instanceId": "a8c480f2cdf2e3f0f66b5cd1e87221618c67af34dc8c526375a83bbc43229be4"
+  },
+  "nodeGroups": [],
+  "id": "YBfRVHq6z52y3MuB",
+  "tags": []
+}
